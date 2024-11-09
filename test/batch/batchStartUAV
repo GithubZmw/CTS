@@ -1,0 +1,39 @@
+#!/bin/bash
+
+PROGRAM="./startUAV"  # Path to executable
+if [ ! -f "$PROGRAM" ]; then
+  echo "Error: Program $PROGRAM not found!"
+  exit 1
+fi
+if [ -z "$1" ]; then
+  echo "Usage: $0 <number_of_runs>"
+  exit 1
+fi
+
+RUN_TIMES=$1           # Number of instances to run
+START_PORT=8002        # Starting port number
+LOG_DIR="./logs"
+mkdir -p "$LOG_DIR"
+PIDS=() # Array to store process IDs of background tasks
+
+# Catch CTRL+C and stop all background processes
+trap 'echo "Stopping all UAV instances..."; for pid in "${PIDS[@]}"; do kill "$pid"; done; exit' SIGINT
+
+start_instance() { # Function to start an instance
+  local port=$1
+  local log_file=$2
+  echo "Starting instance on port $port (output to $log_file)"
+  $PROGRAM --port_UAV=$port > "$log_file" 2>&1 &
+  PIDS+=($!)  # Store PID of background process
+}
+
+# Run program multiple times with output redirected to log files
+for ((i = 1; i <= RUN_TIMES; i++)); do
+  PORT=$((START_PORT + i - 1))      # Increment port for each instance
+  LOG_FILE="$LOG_DIR/run_log_$i.txt"         # Log file for each instance
+  start_instance "$PORT" "$LOG_FILE"
+done
+
+echo "All $RUN_TIMES instances started. Logs are saved in run_log_*.txt files."
+echo "Press CTRL+C to stop all instances."
+wait "${PIDS[@]}" # Wait for all background tasks to complete or until CTRL+C

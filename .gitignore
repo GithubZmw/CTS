@@ -1,0 +1,4 @@
+cmake-build-debug
+build
+test/logs
+libs/libbrpc.a
